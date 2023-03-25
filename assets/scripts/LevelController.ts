@@ -1,4 +1,4 @@
-import { _decorator, CCFloat, Component, EventTouch, Graphics, IVec3Like, Node, TiledLayer, TiledMap, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, CCFloat, Component, EventTouch, Graphics, IVec3Like, Node, TiledLayer, TiledMap, Tween, tween, Vec2, Vec3 } from 'cc';
 import { DirectMove, TypeBlocks } from './utils/Configs';
 const { ccclass, property } = _decorator;
 
@@ -25,6 +25,8 @@ export class LevelController extends Component {
     onLoad() {
         this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        //receive event from EnemyController
+        this.node.on("hit enemy", () => { this.onEventHitEnemy(); }, this);
     }
 
     start() {
@@ -284,7 +286,7 @@ export class LevelController extends Component {
         }
     }
 
-    update(deltaTime: number) {
-
+    onEventHitEnemy() {
+        Tween.stopAll();
     }
 }
