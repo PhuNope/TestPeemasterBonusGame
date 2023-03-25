@@ -1,30 +1,6 @@
-import { _decorator, CCFloat, Component, EventTouch, Graphics, Node, TiledLayer, TiledMap, tween, Vec2, Vec3 } from 'cc';
+import { _decorator, CCFloat, Component, EventTouch, Graphics, IVec3Like, Node, TiledLayer, TiledMap, tween, Vec2, Vec3 } from 'cc';
+import { DirectMove, TypeBlocks } from './utils/Configs';
 const { ccclass, property } = _decorator;
-
-enum TypeBlocks {
-    LEFT_TOP = 1,
-    TOP_RIGHT = 2,
-    TOP = 3,
-    LEFT_BOT = 4,
-    LEFT = 5,
-    RIGHT = 6,
-    LEFT_BOT2 = 7,
-    BOT_RIGHT = 8,
-    LEFT_BOT_RIGHT = 9,
-    TOP_LEFT_BOT = 10,
-    LEFT_TOP_RIGHT = 11,
-    TOP_RIGHT_BOT = 12,
-    EMPTY = 13,
-    TOP_BOT = 14,
-    LEFT_RIGHT = 15
-}
-
-enum DirectMove {
-    LEFT,
-    RIGHT,
-    TOP,
-    BOT
-}
 
 @ccclass('LevelController')
 export class LevelController extends Component {
@@ -55,7 +31,7 @@ export class LevelController extends Component {
         Vec3.add(this.nodes.position, this.tiledLayer.getTiledTileAt(this._col, this._row, true).node.position, new Vec3(50, 50, 0));
 
         this.graphics.moveTo(this.nodes.position.x, this.nodes.position.y);
-        this._arrVec3Graph.push(this.nodes.position);
+        this._arrVec3Graph.push(new Vec3(this.nodes.position.x, this.nodes.position.y, this.nodes.position.z));
     }
 
     onTouchStart(event: EventTouch) {
@@ -71,23 +47,21 @@ export class LevelController extends Component {
 
             switch (directMove) {
                 case DirectMove.LEFT:
-                    this._col--;
+                    this.makeMove(this._col - 1, this._row);
                     break;
 
                 case DirectMove.RIGHT:
-                    this._col++;
+                    this.makeMove(this._col + 1, this._row);
                     break;
 
                 case DirectMove.TOP:
-                    this._row--;
+                    this.makeMove(this._col, this._row - 1);
                     break;
 
                 case DirectMove.BOT:
-                    this._row++;
+                    this.makeMove(this._col, this._row + 1);
                     break;
             }
-
-            this.makeMove();
         }
     }
 
@@ -160,18 +134,20 @@ export class LevelController extends Component {
         }
     }
 
-    makeMove() {
+    makeMove(col: number, row: number) {
         //turn off touch
         this.node.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
 
         let pos: Vec3 = new Vec3();
-        Vec3.add(pos, this.tiledLayer.getTiledTileAt(this._col, this._row, true).node.position, new Vec3(50, 50, 0));
+        Vec3.add(pos, this.tiledLayer.getTiledTileAt(col, row, true).node.position, new Vec3(50, 50, 0));
         let that = this;
 
         //graphics
-        if (this._arrVec3Graph.slice(-2)?.[0] === pos) {
-            this._arrVec3Graph.pop();
+        if (this._arrVec3Graph[this._arrVec3Graph.length - 2]) {
+            if (Vec3.strictEquals(this._arrVec3Graph[this._arrVec3Graph.length - 2], pos)) {
+                this._arrVec3Graph.pop();
+            }
         }
 
         tween(this.nodes.position)
@@ -179,35 +155,40 @@ export class LevelController extends Component {
                 onUpdate(target: Vec3, ratio) {
                     that.nodes.position = target;
 
-                    //graphics
+                    //graphics      
                     that.graphics.clear();
                     that.graphics.moveTo(that._arrVec3Graph[0].x, that._arrVec3Graph[0].y);
-                    for (let i = 1; i < that._arrVec3Graph.length; i++) {
+                    for (let i = 0; i < that._arrVec3Graph.length; i++) {
                         that.graphics.lineTo(that._arrVec3Graph[i].x, that._arrVec3Graph[i].y);
+                        that.graphics.stroke();
                         that.graphics.moveTo(that._arrVec3Graph[i].x, that._arrVec3Graph[i].y);
                     }
 
                     that.graphics.lineTo(target.x, target.y);
                     that.graphics.stroke();
-                },
+                }
             })
             .call(() => {
-                this.checkContinueMove();
-
                 //graphics
-                if (this._arrVec3Graph.slice(-1)[0] !== pos) {
-                    that.graphics.moveTo(pos.x, pos.y);
-                    this._arrVec3Graph.push(pos);
+                this.graphics.moveTo(pos.x, pos.y);
+
+                if (!Vec3.strictEquals(this._arrVec3Graph[this._arrVec3Graph.length - 1], pos)) {
+                    this._arrVec3Graph.push(new Vec3(pos.x, pos.y, pos.z));
                 }
 
-                //turn on touch
-                this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
-                this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+                this._col = col;
+                this._row = row;
+
+                if (!this.checkContinueMove()) {
+                    //turn on touch
+                    this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
+                    this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+                }
             })
             .start();
     }
 
-    checkContinueMove() {
+    checkContinueMove(): boolean {
         let checkNodeLeft: Node = null;
         let checkNodeTop: Node = null;
         let checkNodeRight: Node = null;
@@ -218,78 +199,88 @@ export class LevelController extends Component {
                 checkNodeBot = this.tiledLayer.getTiledTileAt(this._col, this._row + 1, true).node;
                 if (this._preNode === checkNodeBot) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col++;
-                    this.makeMove();
+                    //move to right
+                    this.makeMove(this._col + 1, this._row);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row++;
-                    this.makeMove();
+                    //move to bot
+                    this.makeMove(this._col, this._row + 1);
                 }
-                break;
+
+                return true;
 
             case TypeBlocks.TOP_RIGHT:
                 checkNodeBot = this.tiledLayer.getTiledTileAt(this._col, this._row + 1, true).node;
                 if (this._preNode === checkNodeBot) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col--;
-                    this.makeMove();
+                    //move to left
+                    this.makeMove(this._col - 1, this._row);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row++;
-                    this.makeMove();
+                    //move to bot
+                    this.makeMove(this._col, this._row + 1);
                 }
-                break;
+
+                return true;
 
             case TypeBlocks.LEFT_BOT2 || TypeBlocks.LEFT_BOT:
                 checkNodeRight = this.tiledLayer.getTiledTileAt(this._col + 1, this._row, true).node;
                 if (this._preNode === checkNodeRight) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row--;
-                    this.makeMove();
+                    //move to top
+                    this.makeMove(this._col, this._row - 1);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col++;
-                    this.makeMove();
+                    //move to right
+                    this.makeMove(this._col + 1, this._row);
                 }
-                break;
+
+                return true;
 
             case TypeBlocks.BOT_RIGHT:
                 checkNodeLeft = this.tiledLayer.getTiledTileAt(this._col - 1, this._row, true).node;
                 if (this._preNode === checkNodeLeft) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row--;
-                    this.makeMove();
+                    //move to top
+                    this.makeMove(this._col, this._row - 1);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col--;
-                    this.makeMove();
+                    //move to left
+                    this.makeMove(this._col - 1, this._row);
                 }
-                break;
+
+                return true;
 
             case TypeBlocks.TOP_BOT:
                 checkNodeLeft = this.tiledLayer.getTiledTileAt(this._col - 1, this._row, true).node;
                 if (this._preNode === checkNodeLeft) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col++;
-                    this.makeMove();
+                    //move to right
+                    this.makeMove(this._col + 1, this._row);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._col--;
-                    this.makeMove();
+                    //move to left
+                    this.makeMove(this._col - 1, this._row);
                 }
-                break;
+
+                return true;
 
             case TypeBlocks.LEFT_RIGHT:
                 checkNodeTop = this.tiledLayer.getTiledTileAt(this._col, this._row - 1, true).node;
                 if (this._preNode === checkNodeTop) {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row++;
-                    this.makeMove();
+                    //move to bot
+                    this.makeMove(this._col, this._row + 1);
                 } else {
                     this._preNode = this.tiledLayer.getTiledTileAt(this._col, this._row, true).node;
-                    this._row--;
-                    this.makeMove();
+                    //move to top
+                    this.makeMove(this._col, this._row - 1);
                 }
+
+                return true;
+
+            default:
+                return false;
         }
     }
 

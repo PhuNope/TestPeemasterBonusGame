@@ -3,8 +3,6 @@ const { ccclass, property } = _decorator;
 
 @ccclass('controller')
 export class controller extends Component {
-    @property(Graphics)
-    graphicss: Graphics = null;
 
     moving: boolean = false;
 
