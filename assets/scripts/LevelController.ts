@@ -25,6 +25,7 @@ export class LevelController extends Component {
     onLoad() {
         this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.node.on(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
         //receive event from EnemyController
         this.node.on("hit enemy", () => { this.onEventHitEnemy(); }, this);
     }
@@ -140,6 +141,7 @@ export class LevelController extends Component {
         //turn off touch
         this.node.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.node.off(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
 
         let pos: Vec3 = new Vec3();
         Vec3.add(pos, this.tiledLayer.getTiledTileAt(col, row, true).node.position, new Vec3(50, 50, 0));
@@ -185,6 +187,7 @@ export class LevelController extends Component {
                     //turn on touch
                     this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
                     this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+                    this.node.on(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
                 }
             })
             .start();
