@@ -50,18 +50,26 @@ export class LevelController extends Component {
 
             switch (directMove) {
                 case DirectMove.LEFT:
+                    console.log("LEFT");
+
                     this.makeMove(this._col - 1, this._row);
                     break;
 
                 case DirectMove.RIGHT:
+                    console.log("RIGHT");
+
                     this.makeMove(this._col + 1, this._row);
                     break;
 
                 case DirectMove.TOP:
+                    console.log("TOP");
+
                     this.makeMove(this._col, this._row - 1);
                     break;
 
                 case DirectMove.BOT:
+                    console.log("BOT");
+
                     this.makeMove(this._col, this._row + 1);
                     break;
             }
@@ -291,5 +299,10 @@ export class LevelController extends Component {
 
     onEventHitEnemy() {
         Tween.stopAll();
+
+        //turn off touch
+        this.node.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
+        this.node.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.node.off(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
     }
 }
